@@ -1,0 +1,55 @@
+function [coeffs,remainder] = greedy_vector_decomposition(target,library,error_threshold,verbose)
+%GREEDY_VECTOR_DECOMPOSITION Approximate a vector as a linear combination.
+%   target: a Nx1 column vector
+%   library: a NxM matrix in which each column represents a vector
+%   error_threshold: positive scalar, the maximum error to allow
+%   Here, error means the magnitude of the difference between the target
+%   and our approximation.
+%   verbose: logical scalar, defaults to false
+%   If set to true, we print a progress update every iteration.
+%   coeffs: Mx1 column vector, the coefficients assigned to library vectors
+%   remainder: Nx1 column vector, the difference between the target vector
+%   and our approximation.
+%   In other words, target == library*coeffs + remainder.
+
+if ~exist('verbose','var')
+    verbose = false;
+end
+num_lib_vecs = size(library,2);
+lib_magnitudes = sqrt( sum(library.^2,1) );
+unit_library = library./lib_magnitudes;
+coeffs = zeros( num_lib_vecs, 1 );
+% current = zeros( size(target) );
+remainder = target;
+remainder_magnitude = norm(remainder);
+unit_remainder = remainder/remainder_magnitude;
+remaining_library = unit_library;
+num_remaining_lib_vecs = num_lib_vecs;
+% While the current vector is too far away from the target
+% and we still have library vectors from which to choose,
+iterations_completed = 0;
+while (remainder_magnitude > error_threshold) && (num_remaining_lib_vecs > 0)
+    % Choose the vector onto which the projection of the difference
+    % between current and target vectors is largest.
+    dot_products = dot( remaining_library, repmat(unit_remainder,1,num_lib_vecs) );
+    [~,max_abs_dp_index] = max( abs(dot_products) );
+    % Set the component of this vector to be equal to that projection.
+    new_coefficient = dot_products(max_abs_dp_index)*remainder_magnitude/lib_magnitudes(max_abs_dp_index);
+    coeffs(max_abs_dp_index) = new_coefficient;
+    % Remove the vector from the library so that we do not choose it again.
+    remaining_library(:,max_abs_dp_index) = 0;
+    num_remaining_lib_vecs = num_remaining_lib_vecs-1;
+    % Recompute the current vector and its distance from the target
+    % for the next iteration.
+    current = library*coeffs;
+    remainder = target - current;
+    remainder_magnitude = norm(remainder);
+    unit_remainder = remainder/remainder_magnitude;
+    iterations_completed = iterations_completed+1;
+    if verbose
+        fprintf('iteration: %u, chosen vector: %u, coefficient: %g, remaining distance to target: %g, unused library vectors: %u\n', ...
+            iterations_completed, max_abs_dp_index,new_coefficient, remainder_magnitude, num_remaining_lib_vecs)
+    end
+end
+
+end

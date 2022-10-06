@@ -1,0 +1,53 @@
+%% matrix_division_test
+% by Adam Craig, 2022-10-06
+% Testing whether it is practical to find coefficients by which to
+% linearly combine sample gene expression profiles (GEPs)
+% from single-cell sequencing (SC) data
+% to approximate batch-sequencing data from The Cancer Genome Atlas (TCGA).
+
+num_sc_geps = 110000;
+num_tcga_geps = 7699;
+num_genes = 1000;
+
+single_cell_geps = rand(num_sc_geps,num_genes);
+tcga_geps = rand(num_tcga_geps,num_genes);
+% We want coeffs such that coeffs*single_cell_geps approx. = tcga_geps.
+disp('finding coefficients with matrix division...')
+tic
+% Trying to do it all at once causes an "Out of memory." error.
+% coeffs_div = tcga_geps/single_cell_geps;
+coeffs_div = nan(num_tcga_geps,num_sc_geps);
+for tcga_index = 1:num_tcga_geps
+    coeffs_div()
+end
+toc
+approx_div = coeffs_div*single_cell_geps;
+abs_error_div = abs(approx_div - tcga_geps);
+min_abs_error_div = min(abs_error_div,[],'all');
+mean_abs_error_div = mean(abs_error_div,'all');
+max_abs_error_div = max(abs_error_div,[],'all');
+fprintf('absolute error min: %g, mean: %g, max: %g\n', min_abs_error_div, mean_abs_error_div, max_abs_error_div)
+tic
+coeffs_pinv = tcga_geps*pinv(single_cell_geps);
+toc
+approx_pinv = coeffs_pinv*single_cell_geps;
+min_abs_error_pinv = min(abs_error_pinv,[],'all');
+mean_abs_error_pinv = mean(abs_error_pinv,'all');
+max_abs_error_pinv = max(abs_error_pinv,[],'all');
+fprintf('absolute error min: %g, mean: %g, max: %g\n', min_abs_error_pinv, mean_abs_error_pinv, max_abs_error_pinv)
+coeffs_pc = pca(tcga_geps);
+tcga_geps_pc = tcga_geps*coeffs_pc;
+single_cell_geps_pc = single_cell_geps*coeffs_pc;
+approx_div_pc = approx_div*coeffs_pc;
+approx_pinv_pc = approx_pinv*coeffs_pc;
+figure
+hold on
+scatter3( tcga_geps_pc(:,1), tcga_geps_pc(:,2), tcga_geps_pc(:,3), 'red' )
+scatter3( single_cell_geps_pc(:,1), single_cell_geps_pc(:,2), single_cell_geps_pc(:,3), 'blue' )
+scatter3( approx_div_pc(:,1), approx_div_pc(:,2), approx_div_pc(:,3), 'green' )
+scatter3( approx_pinv_pc(:,1), approx_pinv_pc(:,2), approx_pinv_pc(:,3), 'green' )
+legend({'TCGA','single-cell','matrix division approximation','pseudoinverse multiplication approximation'})
+xlabel('TCGA principal component 1')
+ylabel('TCGA principal component 2')
+zlabel('TCGA principal component 3')
+hold off

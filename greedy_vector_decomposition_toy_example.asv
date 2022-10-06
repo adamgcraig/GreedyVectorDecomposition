@@ -1,0 +1,232 @@
+%% Greedy Vector Decomposition Toy Example
+% by Adam Craig, 2022-10-05
+% demoing the algorithm with a few simple examples
+
+% Keep these consistent for all examples.
+error_threshold = 0.0001;
+verbose = true;
+
+%% Example 1: orthogonal unit basis vectors in 3D space
+% The library is a basis of orthogonal unit vectors in 3D space.
+% We should be able to construct any other 3D vector from these.
+
+target1 = [
+    -1;
+    2;
+    3];
+library1 = [
+    1 0 0;
+    0 1 0;
+    0 0 1
+    ];
+tic
+[coeffs1,remainder1] = greedy_vector_decomposition(target1,library1,error_threshold,verbose);
+time_to_completion1 = toc;
+remaining_error1 = norm(remainder1);
+fprintf('time to completion: %g seconds, remaining error: %g\n',time_to_completion1,remaining_error1)
+f1 = plot_vector_decomposition(target1,library1,coeffs1);
+title('vector decomposition using orthogonal unit vectors')
+
+%% Example 2: orthogonal non-unit basis vectors in 3D space
+% The library is a basis of orthogonal but non-unit vectors in 3D space.
+% We should be able to construct any other 3D vector from these.
+
+target2 = [
+    -1;
+    2;
+    3];
+library2 = [
+    100  0 0;
+    0   -2 0;
+    0    0 sqrt(2)
+    ];
+tic
+[coeffs2,remainder2] = greedy_vector_decomposition(target2,library2,error_threshold,verbose);
+time_to_completion2 = toc;
+remaining_error2 = norm(remainder2);
+fprintf('time to completion: %g seconds, remaining error: %g\n',time_to_completion2,remaining_error2)
+f2 = plot_vector_decomposition(target2,library2,coeffs2);
+title('vector decomposition using orthogonal non-unit vectors')
+
+%% Example 3: non-orthogonal unit basis vectors in 3D space
+% The library is a basis of nonorthogonal but unit vectors in 3D space.
+% We should still be able to construct any other 3D vector from these.
+% You can linearly combine them to get orthogonal basis vectors:
+% [1; 0; 0]
+% -1*[1; 0; 0] + ( 2/qrt(2) )*[sqrt(2)/2; sqrt(2)/2; 0] = [0; 1; 0]
+% -( 2/qrt(2) )*[sqrt(2)/2; sqrt(2)/2; 0] +
+%  ( 3/sqrt(3) )*[sqrt(3)/3 sqrt(3)/3 sqrt(3)/3] = [0; 0; 1]
+% If we put these coefficients into a matrix, we get a linear transform
+% T = [ 1  -1          0; 
+%       0   2/sqrt(2) -2/sqrt(2);
+%       0   0          3/sqrt(3) ] such that
+% library3*T = [ 1 0 0;
+%                0 1 0;
+%                0 0 1].
+% In other words, T = library3^-1 = inv(library3),
+% and we can get a possible solution
+% by transforming the solution to the orthogonal unit vector basis:
+% coeffs3_alt = T*coeffs1 = library3\target3 = [-3;-2sqrt(2);9/sqrt(3)].
+
+target3 = [
+    -1;
+    2;
+    3];
+library3 = [
+    1   sqrt(2)/2  sqrt(3)/3;
+    0   sqrt(2)/2  sqrt(3)/3;
+    0   0          sqrt(3)/3
+    ];
+tic
+[coeffs3,remainder3] = greedy_vector_decomposition(target3,library3,error_threshold,verbose);
+time_to_completion3 = toc;
+remaining_error3 = norm(remainder3);
+fprintf('time to completion: %g seconds, remaining error: %g\n',time_to_completion3,remaining_error3)
+f3 = plot_vector_decomposition(target3,library3,coeffs3);
+title('vector decomposition using nonorthogonal unit vectors and greedy algorithm')
+tic
+coeffs3_lr = library3\target3;
+time_to_completion3_lr = toc;
+remaining_error3_lr = norm( target3 - library3*coeffs3_lr );
+fprintf('for linear regression, time to completion: %g seconds, remaining error: %g\n',time_to_completion3_lr,remaining_error3_lr)
+f3_lr = plot_vector_decomposition(target3,library3,coeffs3_lr);
+title('vector decomposition using nonorthogonal unit vectors and linear regression')
+
+%% Example 4: non-orthogonal non-unit basis vectors in 3D space
+% The library is a basis of nonorthogonal non-unit vectors in 3D space.
+% We should still be able to construct any other 3D vector from these,
+% because the matrix is not degenerate.
+
+target4 = [
+    -1;
+    2;
+    3];
+library4 = [
+    1   2*sqrt(2)/2  -4*sqrt(3)/3;
+    0   3*sqrt(2)/2  -5*sqrt(3)/3;
+    0   0             -6*sqrt(3)/3
+    ];
+tic
+[coeffs4,remainder4] = greedy_vector_decomposition(target4,library4,error_threshold,verbose);
+time_to_completion4 = toc;
+remaining_error4 = norm(remainder4);
+fprintf('time to completion: %g seconds, remaining error: %g\n',time_to_completion4,remaining_error4)
+f4 = plot_vector_decomposition(target4,library4,coeffs4);
+title('vector decomposition using nonorthogonal nonunit vectors and greedy algorithm')
+tic
+coeffs4_lr = library4\target4;
+time_to_completion4_lr = toc;
+remaining_error4_lr = norm( target4 - library4*coeffs4_lr );
+fprintf('for linear regression, time to completion: %g seconds, remaining error: %g\n',time_to_completion4_lr,remaining_error4_lr)
+f4_lr = plot_vector_decomposition(target4,library4,coeffs4_lr);
+title('vector decomposition using nonorthogonal nonunit vectors and linear regression')
+
+%% Example 5: Vectors with normally distributed components
+% Give each vector a different peak value.
+
+num_lib_vecs = 100;
+num_vec_dims = 100;
+target5 = rand(num_vec_dims,1);
+sigma = 1;
+[X,Y] = meshgrid( 1:num_vec_dims, 1:num_lib_vecs );
+library5 = exp(  -0.5*( X - Y ).^2  )/( sigma*sqrt(2*pi) );
+tic
+[coeffs5,remainder5] = greedy_vector_decomposition(target5,library5,error_threshold,verbose);
+time_to_completion5 = toc;
+remaining_error5 = norm(remainder5);
+fprintf('time to completion: %g seconds, remaining error: %g\n',time_to_completion5,remaining_error5)
+tic
+coeffs5_lr = library5\target5;
+time_to_completion5_lr = toc;
+remaining_error5_lr = norm( target5 - library5*coeffs5_lr );
+fprintf('for linear regression, time to completion: %g seconds, remaining error: %g\n',time_to_completion5_lr,remaining_error5_lr)
+
+%% Example 6: Random vectors with power-law distributed components
+% Give each vector a different peak value.
+% Power law sampling code adapted from
+% https://stats.stackexchange.com/questions/173242/random-sample-from-power-law-distribution
+% itself adapted from
+% Clauset, A., Shalizi, C. R., & Newman, M. E. (2009).
+% Power-law distributions in empirical data. SIAM review, 51(4), 661-703.
+% https://arxiv.org/pdf/0706.1062.pdf
+
+num_lib_vecs = 100000;
+num_vec_dims = 100;
+x_min = 5;
+alpha = 2.5;
+target6 = rand(num_vec_dims,1);
+library6 = x_min * ( 1 - rand(num_vec_dims,num_lib_vecs) ).^( -1/(alpha-1) );
+figure
+histogram(  log10( library6(:) ), 'BinMethod', 'fd'  )
+tic
+[coeffs6,remainder6] = greedy_vector_decomposition(target6,library6,error_threshold,verbose);
+time_to_completion6 = toc;
+remaining_error6 = norm(remainder6);
+fprintf('time to completion: %g seconds, remaining error: %g\n',time_to_completion6,remaining_error6)
+tic
+coeffs6_lr = library6\target6;
+time_to_completion6_lr = toc;
+remaining_error6_lr = norm( target6 - library6*coeffs6_lr );
+fprintf('for linear regression, time to completion: %g seconds, remaining error: %g\n',time_to_completion6_lr,remaining_error6_lr)
+tic
+coeffs6_pi = pinv(library6)*target6;
+time_to_completion6_pi = toc;
+remaining_error6_pi = norm( target6 - library6*coeffs6_pi );
+fprintf('for linear regression with pinv(), time to completion: %g seconds, remaining error: %g\n',time_to_completion6_pi,remaining_error6_pi)
+
+%% Example 7: Multiple targets
+% Make several different targets to match.
+% First, sample the vector components from a power law distribution,
+% but this time make each vector a unit vector afterward.
+
+num_targets = 1000;
+num_lib_vecs = 10000;
+num_vec_dims = 100;
+x_min = 5;
+alpha = 2.5;
+target7 = rand(num_vec_dims,num_targets);
+library7 = x_min * ( 1 - rand(num_vec_dims,num_lib_vecs) ).^( -1/(alpha-1) );
+library7 = library7 ./ sqrt(  sum( library7.^2 ) );
+coeffs7_greedy = nan(num_lib_vecs,num_targets);
+remainder7 = nan(num_vec_dims,num_targets);
+tic
+for target_index = 1:num_targets
+    [coeffs7_greedy(:,target_index), remainder7(:,target_index)] = greedy_vector_decomposition( target7(:,target_index), library7, error_threshold, false );
+    fprintf(  'finished target %u, magnitude of remainder: %g\n', target_index, norm( remainder7(:,target_index) )  )
+end
+time_to_completion7 = toc;
+approximation7_greedy = library7*coeffs7_greedy;
+remaining_error7 = sqrt( sum(remainder7.^2) );
+fprintf( 'time to completion: %g seconds, remaining error min: %g, mean: %g, max: %g\n', time_to_completion7, min(remaining_error7), mean(remaining_error7), max(remaining_error7) )
+tic
+coeffs7_lr = library7\target7;
+time_to_completion7_lr = toc;
+approximation7_lr = library7*coeffs7_lr;
+remainder7_lr = target7 - approximation7_lr;
+remaining_error7_lr = sqrt( sum(remainder7_lr.^2) );
+fprintf( 'time to completion: %g seconds, remaining error min: %g, mean: %g, max: %g\n', time_to_completion7_lr, min(remaining_error7_lr), mean(remaining_error7_lr), max(remaining_error7_lr) )
+tic
+coeffs7_pi = pinv(library7)*target7;
+time_to_completion7_pi = toc;
+approximation7_pi = library7*coeffs7_pi;
+remainder7_pi = target7 - approximation7_pi;
+remaining_error7_pi = sqrt( sum(remainder7_pi.^2) );
+fprintf( 'time to completion: %g seconds, remaining error min: %g, mean: %g, max: %g\n', time_to_completion7_pi, min(remaining_error7_pi), mean(remaining_error7_pi), max(remaining_error7_pi) )
+pca_coeffs = pca(target7');
+target7_pc = target7'*pca_coeffs;
+library7_pc = library7'*pca_coeffs;
+approximation7_greedy_pc = approximation7_greedy'*pca_coeffs;
+approximation7_lr_pc = approximation7_lr'*pca_coeffs;
+approximation7_pi_pc = approximation7_pi'*pca_coeffs;
+f7 = figure;
+hold on
+scatter3( library7_pc(:,1), library7_pc(:,2), library7_pc(:,3), 'blue' )
+scatter3( target7_pc(:,1), target7_pc(:,2), target7_pc(:,3), 'red' )
+scatter3( approximation7_greedy_pc(:,1), approximation7_greedy_pc(:,2), approximation7_greedy_pc(:,3), 'yellow' )
+scatter3( approximation7_lr_pc(:,1), approximation7_lr_pc(:,2), approximation7_lr_pc(:,3), 'cyan' )
+scatter3( approximation7_pi_pc(:,1), approximation7_pi_pc(:,2), approximation7_pi_pc(:,3), 'green' )
+legend({'library','target','greedy approximation','matrix division approximation','pseudoinverse approximation'})
+xlabel('principal component 1 of target')
+ylabel('prinicipal component 2 of target')
+zlabel('principal component 3 of target')
+hold off
